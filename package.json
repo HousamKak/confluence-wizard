@@ -4,6 +4,7 @@
   "main": "index.mjs",
   "license": "MIT",
   "private": true,
+  "type": "module",
   "devDependencies": {
     "eslint": "^8.51.0",
     "eslint-plugin-react-hooks": "^4.6.0"
