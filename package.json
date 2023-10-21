@@ -1,7 +1,7 @@
 {
   "name": "confluence-macro-custom-ui",
   "version": "1.0.30",
-  "main": "index.js",
+  "main": "index.mjs",
   "license": "MIT",
   "private": true,
   "devDependencies": {
