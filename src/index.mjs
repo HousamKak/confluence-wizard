@@ -28,13 +28,16 @@ const logger = createLogger({
 
 const resolver = new Resolver();
 
+// Initialize a variable to store our knowledge base data
+let knowledgeBase = [];
+
 resolver.define('index_and_train', async (req) => {
   if (!Array.isArray(req.data)) {
     logger.error('Invalid data format');
     return { error: 'Invalid data format', status: 400 };
   }
 
-  const knowledgeBase = req.data;
+  knowledgeBase = req.data;
   knowledgeBase.forEach(document => {
     tfidfInstance.addDocument(document);
   });
@@ -51,7 +54,6 @@ resolver.define('question_to_gpt', async (req) => {
 
   const question = req.data.question;
   const scores = [];
-  const knowledgeBase = req.data.knowledgeBase || []; // Assuming knowledgeBase can be passed in
 
   tfidfInstance.tfidfs(question, function (i, measure) {
     scores.push({ index: i, score: measure });
