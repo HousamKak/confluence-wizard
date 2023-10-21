@@ -84,7 +84,7 @@ async function fetchAllConfluenceData(spaceKey) {
 resolver.define('get_and_index', async (req) => {
   try {
     // Use your fetchAllConfluenceData function to get the data
-    const fetchedData = await fetchAllConfluenceData('CO');
+    const fetchedData = await fetchAllConfluenceData(req.data.spaceKey);
 
     if (!fetchedData || fetchedData.length === 0) {
       logger.error('No data fetched from Confluence');
@@ -142,7 +142,7 @@ resolver.define('question_to_gpt', async (req) => {
     const data = await response.json();  // Parsing the JSON data from the response
 
     console.log(data);
-    const answer = response['choices'][0]['message']['content'];
+    const answer = data['choices'][0]['message']['content'];
     logger.info('question answered successfully');
     return { answer, status: 200 };
 
