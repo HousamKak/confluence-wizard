@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@forge/api": "^2.19.3",
+    "@forge/bridge": "^3.0.0",
     "@forge/resolver": "^1.5.19",
     "axios": "^1.5.1",
     "dotenv": "^16.3.1",

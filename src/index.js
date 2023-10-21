@@ -1,9 +1,9 @@
 import Resolver from '@forge/resolver';
-// // import axios from 'axios'
 import { config } from 'dotenv';
 import tfidf from 'node-tfidf';
 import { createLogger, format as _format, transports as _transports } from 'winston';
 import { fetch } from '@forge/api';
+import { api, route } from '@forge/bridge';
 
 // Load environment variables from .env file
 config();
@@ -26,19 +26,82 @@ const resolver = new Resolver();
 // Initialize a variable to store our knowledge base data
 let knowledgeBase = [];
 
-resolver.define('index_and_train', async (req) => {
-  if (!Array.isArray(req.data)) {
-    logger.error('Invalid data format');
-    return { error: 'Invalid data format', status: 400 };
+// Define a function to traverse the Atlas Doc format and extract content
+function extractContentFromAtlasDoc(node) {
+  if (node.type === 'text') {
+    return node.text;
   }
 
-  knowledgeBase = req.data;
-  knowledgeBase.forEach(document => {
-    tfidfInstance.addDocument(document);
-  });
+  if (node.content) {
+    return node.content.map(extractContentFromAtlasDoc).join('');
+  }
 
-  logger.info('Data indexed successfully');
-  return { status: 'Data indexed successfully', status_code: 200 };
+  return '';
+}
+
+async function fetchAllConfluenceData(spaceKey) {
+  console.log(`Fetching all Confluence data for spaceKey: ${spaceKey}`);
+  let allPages = [];
+  let start = 0;
+  let limit = 25;
+  let hasMoreData = true;
+
+  while (hasMoreData) {
+    console.log(`Fetching pages with start index: ${start}`);
+    const response = await api.asUser().requestConfluence(route`/wiki/rest/api/content?spaceKey=${spaceKey}&start=${start}&limit=${limit}`);
+    const data = await response.json();
+
+    console.log(`Fetched ${data.results.length} pages`);
+    allPages = allPages.concat(data.results);
+
+    if (data.size < limit) {
+      console.log("No more pages left to fetch.");
+      hasMoreData = false;
+    }
+  }
+  // Fetch body content for each page and store in an array
+  const bodyContents = [];
+  for (const page of allPages) {
+    const pageId = page.id;
+    const bodyResponse = await api.asUser().requestConfluence(route`/wiki/api/v2/pages/${pageId}?body-format=atlas_doc_format`, {
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    const bodyData = await bodyResponse.json();
+
+    if (bodyData && bodyData.body.atlas_doc_format.value) {
+      const parsedAtlasDoc = JSON.parse(bodyData.body.atlas_doc_format.value);
+      const content = extractContentFromAtlasDoc(parsedAtlasDoc);
+      bodyContents.push(content);
+    }
+  }
+
+  return bodyContents;
+}
+
+
+resolver.define('get_and_index', async (req) => {
+  try {
+    // Use your fetchAllConfluenceData function to get the data
+    const fetchedData = await fetchAllConfluenceData('CO');
+
+    if (!fetchedData || fetchedData.length === 0) {
+      logger.error('No data fetched from Confluence');
+      return { error: 'No data fetched from Confluence', status: 400 };
+    }
+
+    knowledgeBase = fetchedData;
+    knowledgeBase.forEach(document => {
+      tfidfInstance.addDocument(document);
+    });
+
+    logger.info('Data indexed successfully');
+    return { status: 'Data indexed successfully', status_code: 200 };
+  } catch (error) {
+    logger.error(`Failed to fetch and index Confluence data: ${error.message}`);
+    return { error: `Failed to fetch and index Confluence data: ${error.message}`, status: 500 };
+  }
 });
 
 resolver.define('question_to_gpt', async (req) => {
