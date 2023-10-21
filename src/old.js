@@ -1,9 +1,17 @@
 import Resolver from '@forge/resolver';
-import TFIDF from './tfidf.js';
-import api, { fetch as forgeFetch,route } from '@forge/api';
+import { config } from 'dotenv';
+import tfidf from 'node-tfidf';
 import { createLogger, format as _format, transports as _transports } from 'winston';
+import { fetch } from '@forge/api';
+import { api, route } from '@forge/bridge';
 
-const tfidfInstance = new TFIDF();
+// Load environment variables from .env file
+config();
+
+// Initialize an instance of TF-IDF
+const tfidfInstance = new tfidf();
+
+// Set up a logger
 const logger = createLogger({
   level: 'info',
   format: _format.json(),
@@ -14,8 +22,11 @@ const logger = createLogger({
 });
 
 const resolver = new Resolver();
+
+// Initialize a variable to store our knowledge base data
 let knowledgeBase = [];
 
+// Define a function to traverse the Atlas Doc format and extract content
 function extractContentFromAtlasDoc(node) {
   if (node.type === 'text') {
     return node.text;
@@ -29,23 +40,26 @@ function extractContentFromAtlasDoc(node) {
 }
 
 async function fetchAllConfluenceData(spaceKey) {
+  console.log(`Fetching all Confluence data for spaceKey: ${spaceKey}`);
   let allPages = [];
   let start = 0;
   let limit = 25;
   let hasMoreData = true;
 
   while (hasMoreData) {
+    console.log(`Fetching pages with start index: ${start}`);
     const response = await api.asUser().requestConfluence(route`/wiki/rest/api/content?spaceKey=${spaceKey}&start=${start}&limit=${limit}`);
     const data = await response.json();
+
+    console.log(`Fetched ${data.results.length} pages`);
     allPages = allPages.concat(data.results);
 
-    if (data.results.length < limit) {
+    if (data.size < limit) {
+      console.log("No more pages left to fetch.");
       hasMoreData = false;
-    } else {
-      start += limit;  // Increment the start index for the next batch of pages
     }
   }
-
+  // Fetch body content for each page and store in an array
   const bodyContents = [];
   for (const page of allPages) {
     const pageId = page.id;
@@ -66,12 +80,15 @@ async function fetchAllConfluenceData(spaceKey) {
   return bodyContents;
 }
 
+
 resolver.define('get_and_index', async (req) => {
   try {
+    // Use your fetchAllConfluenceData function to get the data
     const fetchedData = await fetchAllConfluenceData(req.data.spaceKey);
+
     if (!fetchedData || fetchedData.length === 0) {
       logger.error('No data fetched from Confluence');
-      return { error: 'No data fetched from Confluence', status_code: 400 };
+      return { error: 'No data fetched from Confluence', status: 400 };
     }
 
     knowledgeBase = fetchedData;
@@ -79,21 +96,18 @@ resolver.define('get_and_index', async (req) => {
       tfidfInstance.addDocument(document);
     });
 
-    tfidfInstance.computeIDF();  // Compute the IDF values
-
     logger.info('Data indexed successfully');
     return { status: 'Data indexed successfully', status_code: 200 };
-
   } catch (error) {
     logger.error(`Failed to fetch and index Confluence data: ${error.message}`);
-    return { error: `Failed to fetch and index Confluence data: ${error.message}`, status_code: 500 };
+    return { error: `Failed to fetch and index Confluence data: ${error.message}`, status: 500 };
   }
 });
 
 resolver.define('question_to_gpt', async (req) => {
   if (typeof req.data.question !== 'string' || req.data.question.length === 0) {
     logger.error('Invalid question format');
-    return { error: 'Invalid question format', status_code: 400 };
+    return { error: 'Invalid question format', status: 400 };
   }
 
   const question = req.data.question;
@@ -124,22 +138,31 @@ resolver.define('question_to_gpt', async (req) => {
       body: JSON.stringify(params)
     };
 
-    const response = await forgeFetch(url, config);
-    if (!response.ok) {
-      throw new Error('OpenAI API call failed');
-    }
+    const response = await fetch(url, config);
+    const data = await response.json();  // Parsing the JSON data from the response
 
-    const data = await response.json();
+    console.log(data);
     const answer = data['choices'][0]['message']['content'];
-
-    logger.info('Question answered successfully');
-    return { answer, status_code: 200 };
+    logger.info('question answered successfully');
+    return { answer, status: 200 };
 
   } catch (error) {
-    const errorMessage = error.message;
+    const errorMessage = error.response?.data?.error?.message || error.message;
     logger.error(`Failed to question GPT-3.5: ${errorMessage}`);
-    return { error: `Failed to question GPT-3.5: ${errorMessage}`, status_code: 500 };
+    return { error: `Failed to question GPT-3.5: ${errorMessage}`, status: 500 };
   }
 });
 
-export const handler = resolver.getDefinitions();
+// export const handler = resolver.getDefinitions();
+
+// import Resolver from '@forge/resolver';
+
+// const resolver = new Resolver();
+
+// resolver.define('getText', (req) => {
+//   console.log(req);
+
+//   return 'Hello, world!';
+// });
+
+// export const handler = resolver.getDefinitions();

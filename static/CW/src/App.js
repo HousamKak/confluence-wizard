@@ -19,7 +19,7 @@ function App() {
       }
     } catch (e) {
       console.error(`An error occurred while loading data: ${e.message}`);
-      setError('There was an issue fetching the data. Please try again.');
+      setError('There was an issue cc fetching the data. Please try again.');
     }
   };
 
