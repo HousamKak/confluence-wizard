@@ -1,0 +1,16 @@
+modules:
+  macro:
+    - key: confluence-wizard
+      resource: main
+      resolver:
+        function: resolver
+      title: confluence-wizard
+      description: Answers questions from knowledge base
+  function:
+    - key: resolver
+      handler: index.handler
+resources:
+  - key: main
+    path: static/CW/build
+app:
+  id: ari:cloud:ecosystem::app/f30378e7-4409-4b38-b5b8-5c955afd05de
