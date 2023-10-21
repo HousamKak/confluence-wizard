@@ -13,7 +13,7 @@ function App() {
       const data = await invoke('fetchAllConfluenceData', { spaceKey: 'CO' });
       setKnowledgeBase(data);
 
-      const backendResponse = await invoke('indexAndTrainOnBackend', { data });
+      const backendResponse = await invoke('index_and_train', { data });
 
       if (!backendResponse.success) {
         setError('There was an issue fetching the data. Please try again.');
@@ -29,7 +29,7 @@ function App() {
   const questionAI = async (questionToAsk) => {
     try {
       setError('');
-      const responseData = await invoke('questionToGPT', { question: questionToAsk });
+      const responseData = await invoke('question_to_gpt', { question: questionToAsk });
       setResponse(responseData.answer);
     } catch (e) {
       console.error(`An error occurred while questioning AI: ${e.message}`);

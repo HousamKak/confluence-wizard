@@ -1,20 +1,12 @@
 import Resolver from '@forge/resolver';
-import axios from 'axios'
-// import 'openai/shims/node.js';
-// import OpenAIApi from "openai";
+// // import axios from 'axios'
 import { config } from 'dotenv';
 import tfidf from 'node-tfidf';
 import { createLogger, format as _format, transports as _transports } from 'winston';
+import { fetch } from '@forge/api';
 
 // Load environment variables from .env file
 config();
-
-// Initialize OpenAI API client with credentials from environment variables
-// const openai = new OpenAIApi({
-//   apiKey: process.env.OPENAI_API_KEY,
-//   organization: process.env.OPENAI_ORGANIZATION,
-// });
-
 
 // Initialize an instance of TF-IDF
 const tfidfInstance = new tfidf();
@@ -65,6 +57,7 @@ resolver.define('question_to_gpt', async (req) => {
   const topDocs = scores.sort((a, b) => b.score - a.score).slice(0, 5).map(doc => knowledgeBase[doc.index]).join(' ');
 
   try {
+    const url = "https://api.openai.com/v1/chat/completions";
     const params = {
       model: "gpt-3.5-turbo",
       messages: [
@@ -72,13 +65,20 @@ resolver.define('question_to_gpt', async (req) => {
         { role: "user", content: `knowledge base: ${topDocs}\n\nQuestion: ${question}` }
       ],
     };
+
     const config = {
+      method: 'POST',
       headers: {
         Authorization: "Bearer " + process.env.OPENAI_API_KEY,
         'Content-Type': "application/json",
-      }
+      },
+      body: JSON.stringify(params)
     };
-    const response = await axios.post("https://api.openai.com/v1/chat/completions", params, config);
+
+    const response = await fetch(url, config);
+    const data = await response.json();  // Parsing the JSON data from the response
+
+    console.log(data);
     const answer = response['choices'][0]['message']['content'];
     logger.info('question answered successfully');
     return { answer, status: 200 };
@@ -91,7 +91,6 @@ resolver.define('question_to_gpt', async (req) => {
 });
 
 export const handler = resolver.getDefinitions();
-
 
 // import Resolver from '@forge/resolver';
 

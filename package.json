@@ -9,10 +9,12 @@
     "eslint-plugin-react-hooks": "^4.6.0"
   },
   "dependencies": {
+    "@forge/api": "^2.19.3",
     "@forge/resolver": "^1.5.19",
     "axios": "^1.5.1",
     "dotenv": "^16.3.1",
     "formdata-node": "^5.0.1",
+    "node-fetch": "^3.3.2",
     "node-tfidf": "^0.0.2",
     "winston": "^3.11.0"
   }

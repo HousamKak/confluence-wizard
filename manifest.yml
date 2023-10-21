@@ -12,5 +12,20 @@ modules:
 resources:
   - key: main
     path: static/CW/build
+permissions:
+  scopes:
+    - read:confluence-content.summary
+    - read:confluence-space.summary
+    - read:page:confluence
+  content:
+    styles:
+      - unsafe-inline
+  external:
+    fetch:
+      client:
+        - '*'
+      backend:
+        - '*'
+
 app:
   id: ari:cloud:ecosystem::app/f30378e7-4409-4b38-b5b8-5c955afd05de
