@@ -1,6 +1,7 @@
 import Resolver from '@forge/resolver';
-import 'openai/shims/node.js';
-import OpenAIApi from "openai";
+import axios from 'axios'
+// import 'openai/shims/node.js';
+// import OpenAIApi from "openai";
 import { config } from 'dotenv';
 import tfidf from 'node-tfidf';
 import { createLogger, format as _format, transports as _transports } from 'winston';
@@ -9,10 +10,11 @@ import { createLogger, format as _format, transports as _transports } from 'wins
 config();
 
 // Initialize OpenAI API client with credentials from environment variables
-const openai = new OpenAIApi({
-  apiKey: process.env.OPENAI_API_KEY,
-  organization: process.env.OPENAI_ORGANIZATION,
-});
+// const openai = new OpenAIApi({
+//   apiKey: process.env.OPENAI_API_KEY,
+//   organization: process.env.OPENAI_ORGANIZATION,
+// });
+
 
 // Initialize an instance of TF-IDF
 const tfidfInstance = new tfidf();
@@ -63,14 +65,20 @@ resolver.define('question_to_gpt', async (req) => {
   const topDocs = scores.sort((a, b) => b.score - a.score).slice(0, 5).map(doc => knowledgeBase[doc.index]).join(' ');
 
   try {
-    const response = await openai.chat.completions.create({
+    const params = {
       model: "gpt-3.5-turbo",
       messages: [
-        { role: "system", content: "You are an expert in the knowledge base that I provide you with. Answer any question from the information available in the knowledge base I provide." },
+        { role: "system", content: "You are an expert in the knowledge base that I provide you with. You have to answer any question that I ask you strictly from the information available in the knowledge base I provide." },
         { role: "user", content: `knowledge base: ${topDocs}\n\nQuestion: ${question}` }
       ],
-    });
-
+    };
+    const config = {
+      headers: {
+        Authorization: "Bearer " + process.env.OPENAI_API_KEY,
+        'Content-Type': "application/json",
+      }
+    };
+    const response = await axios.post("https://api.openai.com/v1/chat/completions", params, config);
     const answer = response['choices'][0]['message']['content'];
     logger.info('question answered successfully');
     return { answer, status: 200 };
@@ -83,3 +91,16 @@ resolver.define('question_to_gpt', async (req) => {
 });
 
 export const handler = resolver.getDefinitions();
+
+
+// import Resolver from '@forge/resolver';
+
+// const resolver = new Resolver();
+
+// resolver.define('getText', (req) => {
+//   console.log(req);
+
+//   return 'Hello, world!';
+// });
+
+// export const handler = resolver.getDefinitions();

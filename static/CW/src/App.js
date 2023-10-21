@@ -46,17 +46,55 @@ function App() {
     <div>
       <button onClick={loadData} disabled={knowledgeBase.length > 0}>Load Data</button>
       <p>Knowledge Base Loaded: {knowledgeBase.length > 0 ? 'Yes' : 'No'}</p>
-      <form onSubmit={handleFormSubmit}>
         <label>
           Type your question:
           <textarea value={question} onChange={(e) => setQuestion(e.target.value)} />
         </label>
-        <button type="submit">Ask</button>
-      </form>
+        <button onClick={handleFormSubmit} type="submit">Ask</button>
       {error && <p>{error}</p>}
       <p>Response: {response}</p>
     </div>
   );
 }
 
+// // return (
+// //   <div>
+// //     <button onClick={loadData} disabled={knowledgeBase.length > 0}>Load Data</button>
+// //     <p>Knowledge Base Loaded: {knowledgeBase.length > 0 ? 'Yes' : 'No'}</p>
+// //     <form onSubmit={handleFormSubmit}>
+// //       <label>
+// //         Type your question:
+// //         <textarea value={question} onChange={(e) => setQuestion(e.target.value)} />
+// //       </label>
+// //       <button type="submit">Ask</button>
+// //     </form>
+// //     {error && <p>{error}</p>}
+// //     <p>Response: {response}</p>
+// //   </div>
+// // );
+
 export default App;
+
+// import React, { useEffect, useState } from 'react';
+// import { invoke } from '@forge/bridge';
+
+// function App() {
+//   const [data, setData] = useState(null);
+
+//   useEffect(() => {
+//     invoke('getText', { example: 'my-invoke-variable' }).then(setData);
+//   }, []);
+
+//   return (
+//     <>
+//       <div>
+//         {data ? data : 'Loading...'}
+//       </div>
+//       <div>
+//         <p>hello</p>
+//       </div>
+//     </>
+//   );
+// }
+
+// export default App;
