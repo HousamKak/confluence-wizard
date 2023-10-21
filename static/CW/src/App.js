@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { invoke } from '@forge/bridge';
 
 function App() {
-  const [knowledgeBase, setKnowledgeBase] = useState([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [question, setQuestion] = useState('');
   const [response, setResponse] = useState('');
   const [error, setError] = useState('');
@@ -10,14 +10,11 @@ function App() {
   const loadData = async () => {
     try {
       setError('');
-      const data = await invoke('fetchAllConfluenceData', { spaceKey: 'CO' });
-      setKnowledgeBase(data);
-
-      const backendResponse = await invoke('index_and_train', { data });
-
-      if (!backendResponse.success) {
+      const data = await invoke('get_and_index', { spaceKey: 'CO' });
+      if (!data.success) {
         setError('There was an issue fetching the data. Please try again.');
       } else {
+        setIsDataLoaded(true);
         console.log("Data indexed successfully on backend");
       }
     } catch (e) {
@@ -37,64 +34,24 @@ function App() {
     }
   };
 
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
+  const handleClick = async () => {
     await questionAI(question);
   };
 
   return (
     <div>
-      <button onClick={loadData} disabled={knowledgeBase.length > 0}>Load Data</button>
-      <p>Knowledge Base Loaded: {knowledgeBase.length > 0 ? 'Yes' : 'No'}</p>
-        <label>
-          Type your question:
-          <textarea value={question} onChange={(e) => setQuestion(e.target.value)} />
-        </label>
-        <button onClick={handleFormSubmit} type="submit">Ask</button>
+      <button onClick={loadData} disabled={isDataLoaded}>Load Data</button>
+      <p>Knowledge Base Loaded: {isDataLoaded ? 'Yes' : 'No'}</p>
+      <label>
+        Type your question:
+        <textarea value={question} onChange={(e) => setQuestion(e.target.value)} />
+      </label>
+      <button onClick={handleClick} type="submit">Ask</button>
       {error && <p>{error}</p>}
       <p>Response: {response}</p>
     </div>
   );
 }
 
-// // return (
-// //   <div>
-// //     <button onClick={loadData} disabled={knowledgeBase.length > 0}>Load Data</button>
-// //     <p>Knowledge Base Loaded: {knowledgeBase.length > 0 ? 'Yes' : 'No'}</p>
-// //     <form onSubmit={handleFormSubmit}>
-// //       <label>
-// //         Type your question:
-// //         <textarea value={question} onChange={(e) => setQuestion(e.target.value)} />
-// //       </label>
-// //       <button type="submit">Ask</button>
-// //     </form>
-// //     {error && <p>{error}</p>}
-// //     <p>Response: {response}</p>
-// //   </div>
-// // );
 
 export default App;
-
-// import React, { useEffect, useState } from 'react';
-// import { invoke } from '@forge/bridge';
-
-// function App() {
-//   const [data, setData] = useState(null);
-
-//   useEffect(() => {
-//     invoke('getText', { example: 'my-invoke-variable' }).then(setData);
-//   }, []);
-
-//   return (
-//     <>
-//       <div>
-//         {data ? data : 'Loading...'}
-//       </div>
-//       <div>
-//         <p>hello</p>
-//       </div>
-//     </>
-//   );
-// }
-
-// export default App;
