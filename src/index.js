@@ -1,4 +1,5 @@
 import Resolver from '@forge/resolver';
+import 'openai/shims/node.js';
 import OpenAIApi from "openai";
 import { config } from 'dotenv';
 import tfidf from 'node-tfidf';
