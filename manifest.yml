@@ -14,8 +14,6 @@ modules:
 resources:
   - key: main
     path: static/CW/build
-    tunnel:
-      port: 3000
 
 permissions:
   scopes:
@@ -27,8 +25,6 @@ permissions:
       - unsafe-inline
   external:
     fetch:
-      client:
-        - '*'          # This allows your client-side code to make fetch requests to any domain
       backend:
         - https://api.openai.com/v1/chat/completions  # Allows your backend to make requests specifically to OpenAI
 app:

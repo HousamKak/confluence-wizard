@@ -106,7 +106,7 @@ resolver.define('question_to_gpt', async (req) => {
   const topDocs = scores.sort((a, b) => b.score - a.score).slice(0, 5).map(doc => knowledgeBase[doc.index]).join(' ');
 
   try {
-    const url = "https://api.openai.com/v1/chat/completions";
+    const url = "";
     const params = {
       model: "gpt-3.5-turbo",
       messages: [
