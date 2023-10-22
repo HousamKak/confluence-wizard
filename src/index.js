@@ -1,9 +1,16 @@
 import Resolver from '@forge/resolver';
 import TFIDF from './tfidf.js';
-import api, { fetch as forgeFetch, route } from '@forge/api';
+import api, { fetch, route } from '@forge/api';
 import { createLogger, format as _format, transports as _transports } from 'winston';
+import { config } from 'dotenv';
 
+// Load environment variables from .env file
+config();
+
+
+// Initialize an instance of TF-IDF, a machine learning algorithm to find the importance of words
 const tfidfInstance = new TFIDF();
+
 const logger = createLogger({
   level: 'info',
   format: _format.json(),
@@ -49,7 +56,7 @@ async function fetchAllConfluenceData(spaceKey) {
   const bodyContents = [];
   for (const page of allPages) {
     const pageId = page.id;
-    const bodyResponse = await api.asUser().requestConfluence(route`/wiki/api/v2/pages/${pageId}?body-format=atlas_doc_format`, {
+    const bodyResponse = await api.asApp().requestConfluence(route`/wiki/api/v2/pages/${pageId}?body-format=atlas_doc_format`, {
       headers: {
         'Accept': 'application/json'
       }
@@ -67,10 +74,14 @@ async function fetchAllConfluenceData(spaceKey) {
 }
 
 resolver.define('get_and_index', async ({ payload }) => {
+  console.log('get_and_index called ', payload);
   try {
     const fetchedData = await fetchAllConfluenceData(payload.spaceKey);
+    console.log('Fetched data from Confluence:', fetchedData);
+    
     if (!fetchedData || fetchedData.length === 0) {
       logger.error('No data fetched from Confluence');
+      console.error('No data fetched from Confluence');
       return { sucess: false, error: 'No data fetched from Confluence', status_code: 400 };
     }
 
@@ -80,33 +91,47 @@ resolver.define('get_and_index', async ({ payload }) => {
     });
 
     tfidfInstance.computeIDF();  // Compute the IDF values
+    console.log("Term Frequencies:", tfidfInstance.termFrequency);  // Log added here
+    console.log("Inverse Document Frequencies:", tfidfInstance.inverseDocumentFrequency);  // Log added here
 
     logger.info('Data indexed successfully');
+    console.log('Data indexed successfully');
+    
     return { success: true, status: 'Data indexed successfully', status_code: 200 };
 
   } catch (error) {
     logger.error(`Failed to fetch and index Confluence data: ${error.message}`);
+    console.error(`Failed to fetch and index Confluence data: ${error.message}`);
     return { success: false, error: `Failed to fetch and index Confluence data: ${error.message}`, status_code: 500 };
   }
 });
 
 resolver.define('question_to_gpt', async ({payload}) => {
+  console.log('question_to_gpt called with payload:', payload);
+  
   if (typeof payload.question !== 'string' || payload.question.length === 0) {
     logger.error('Invalid question format');
+    console.log('Invalid question format');
     return { answer: 'Invalid question format', status_code: 400 };
   }
 
   const question = payload.question;
+  console.log('Question received:', question);
   const scores = [];
+
+
+  console.log("Preprocessed Question:", tfidfInstance.preprocess(question));  // Log added here
 
   tfidfInstance.tfidfs(question, function (i, measure) {
     scores.push({ index: i, score: measure });
   });
 
+  console.log("TF-IDF Scores:", scores);  // Log added here
   const topDocs = scores.sort((a, b) => b.score - a.score).slice(0, 5).map(doc => knowledgeBase[doc.index]).join(' ');
+  console.log('Top documents based on TF-IDF:', topDocs);
 
   try {
-    const url = "https://api.openai.com/v1/chat/completions";
+    const url = 'https://api.openai.com/v1/chat/completions';
     const params = {
       model: "gpt-3.5-turbo",
       messages: [
@@ -114,6 +139,8 @@ resolver.define('question_to_gpt', async ({payload}) => {
         { role: "user", content: `knowledge base: ${topDocs}\n\nQuestion: ${question}` }
       ],
     };
+
+    console.log('Sending request to OpenAI with params:', params);
 
     const config = {
       method: 'POST',
@@ -124,7 +151,8 @@ resolver.define('question_to_gpt', async ({payload}) => {
       body: JSON.stringify(params)
     };
 
-    const response = await forgeFetch(url, config);
+    const response = await fetch(url, config);
+    console.log(response)
     if (!response.ok) {
       throw new Error('OpenAI API call failed');
     }
@@ -133,11 +161,13 @@ resolver.define('question_to_gpt', async ({payload}) => {
     const answer = data['choices'][0]['message']['content'];
 
     logger.info('Question answered successfully');
+    console.log('OpenAI Response:', answer);
     return { answer, status_code: 200 };
 
   } catch (error) {
     const errorMessage = error.message;
     logger.error(`Failed to question GPT-3.5: ${errorMessage}`);
+    console.error(`Failed to question GPT-3.5: ${errorMessage}`);
     return { error: `Failed to question GPT-3.5: ${errorMessage}`, status_code: 500 };
   }
 });

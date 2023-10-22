@@ -12,6 +12,9 @@
     "@forge/api": "^2.19.3",
     "@forge/bridge": "^3.0.0",
     "@forge/resolver": "1.5.19",
+    "dotenv": "^16.3.1",
+    "node-fetch": "^3.3.2",
+    "openai": "^4.12.4",
     "winston": "^3.11.0"
   }
 }

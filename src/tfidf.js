@@ -69,12 +69,14 @@ class TFIDF {
 
         return tfidfVector;
     }
-
     tfidfs(doc, callback) {
         const docVector = this.tfidf(doc);
         this.documents.forEach((_, index) => {
             const comparisonVector = this.tfidf(this.documents[index].join(' '));
             const cosineSimilarity = this.computeCosineSimilarity(docVector, comparisonVector);
+            
+            console.log("Cosine Similarity for Document", index, ":", cosineSimilarity);  // Log added here
+
             callback(index, cosineSimilarity);
         });
     }
