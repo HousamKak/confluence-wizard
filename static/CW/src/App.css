@@ -1,49 +1,66 @@
 /* App.css */
 
 .container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 50px;
-    background-color: #F9FAFC;
-    font-family: Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 50px;
+  background-color: #f9fafc;
+  font-family: Arial, sans-serif;
+}
+
+.button {
+  padding: 10px 20px;
+  margin: 10px 0;
+  border: none;
+  border-radius: 5px;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.button:hover {
+  background-color: #0056b3;
+}
+
+.button:disabled {
+  background-color: #b0c4de;
+  cursor: not-allowed;
+}
+
+.textarea {
+  padding: 10px;
+  width: 300px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+}
+
+.error-text {
+  color: red;
+  font-size: 0.9em;
+}
+
+.loader {
+  border: 5px solid #f3f3f3;
+  border-radius: 50%;
+  border-top: 5px solid #3498db;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
   }
-  
-  .button {
-    padding: 10px 20px;
-    margin: 10px 0;
-    border: none;
-    border-radius: 5px;
-    background-color: #007BFF;
-    color: white;
-    cursor: pointer;
-    transition: background-color 0.3s;
+  100% {
+    transform: rotate(360deg);
   }
-  
-  .button:hover {
-    background-color: #0056b3;
-  }
-  
-  .button:disabled {
-    background-color: #b0c4de;
-    cursor: not-allowed;
-  }
-  
-  .textarea {
-    padding: 10px;
-    width: 300px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-  }
-  
-  .label {
-    display: flex;
-    flex-direction: column;
-    margin-top: 20px;
-  }
-  
-  .error-text {
-    color: red;
-    font-size: 0.9em;
-  }
-  
+}

@@ -1,12 +1,7 @@
 import Resolver from '@forge/resolver';
 import TFIDF from './tfidf.js';
-import api, { fetch, route } from '@forge/api';
+import api, { storage, fetch, route } from '@forge/api';
 import { createLogger, format as _format, transports as _transports } from 'winston';
-import { config } from 'dotenv';
-
-// Load environment variables from .env file
-config();
-
 
 // Initialize an instance of TF-IDF, a machine learning algorithm to find the importance of words
 const tfidfInstance = new TFIDF();
@@ -73,12 +68,39 @@ async function fetchAllConfluenceData(spaceKey) {
   return bodyContents;
 }
 
+// In your backend code
+
+resolver.define('store_openai_key', async ({ payload }) => {
+  try {
+    if (payload && payload.openaiKey) {
+      await storage.setSecret("OPENAI_API_KEY", payload.openaiKey);
+      return { success: true };
+    }
+    return { success: false, error: "No OpenAI API Key provided." };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+resolver.define('check_openai_key', async () => {
+  try {
+    const apiKey = await storage.getSecret("OPENAI_API_KEY");
+    if (apiKey) {
+      return { hasKey: true };
+    } else {
+      return { hasKey: false };
+    }
+  } catch (error) {
+    return { hasKey: false, error: error.message };
+  }
+});
+
 resolver.define('get_and_index', async ({ payload }) => {
   console.log('get_and_index called ', payload);
   try {
     const fetchedData = await fetchAllConfluenceData(payload.spaceKey);
     console.log('Fetched data from Confluence:', fetchedData);
-    
+
     if (!fetchedData || fetchedData.length === 0) {
       logger.error('No data fetched from Confluence');
       console.error('No data fetched from Confluence');
@@ -96,7 +118,7 @@ resolver.define('get_and_index', async ({ payload }) => {
 
     logger.info('Data indexed successfully');
     console.log('Data indexed successfully');
-    
+
     return { success: true, status: 'Data indexed successfully', status_code: 200 };
 
   } catch (error) {
@@ -106,9 +128,9 @@ resolver.define('get_and_index', async ({ payload }) => {
   }
 });
 
-resolver.define('question_to_gpt', async ({payload}) => {
+resolver.define('question_to_gpt', async ({ payload }) => {
   console.log('question_to_gpt called with payload:', payload);
-  
+
   if (typeof payload.question !== 'string' || payload.question.length === 0) {
     logger.error('Invalid question format');
     console.log('Invalid question format');
@@ -142,10 +164,17 @@ resolver.define('question_to_gpt', async ({payload}) => {
 
     console.log('Sending request to OpenAI with params:', params);
 
+    const apiKey = await storage.getSecret("OPENAI_API_KEY");
+    if (!apiKey) {
+      logger.error('OpenAI API key not found in storage');
+      console.error('OpenAI API key not found in storage');
+      return { error: 'OpenAI API key not found in storage', status_code: 500 };
+    }
+
     const config = {
       method: 'POST',
       headers: {
-        Authorization: "Bearer " + process.env.OPENAI_API_KEY,
+        Authorization: "Bearer " + apiKey,
         'Content-Type': "application/json",
       },
       body: JSON.stringify(params)
