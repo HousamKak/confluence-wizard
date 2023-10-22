@@ -1,4 +1,5 @@
 import React from 'react';
+import LoadingSpinner from '../Common/LoadingSpinner.js';
 
 const Configurations = ({
     hasApiKey,
@@ -43,7 +44,7 @@ const Configurations = ({
             <div className="load-data-section">
                 <p>Knowledge Base Loaded: {isDataLoaded ? 'Yes' : 'No'}</p>
                 <button onClick={loadData} disabled={isDataLoaded || loading} className="button">
-                    {loading ? (<span className="loader"></span>) : "Load Data"}
+                    {loading ? <LoadingSpinner /> : "Load Data"}
                 </button>
             </div>
         </div>

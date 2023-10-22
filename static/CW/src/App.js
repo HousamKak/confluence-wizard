@@ -108,7 +108,10 @@ function App() {
     <div className="container">
       {!isSetupComplete ? (
         checkingAPIKey ? (
-          <SearchingKeyMessage />
+          <>
+            <SearchingKeyMessage />
+            <LoadingSpinner />
+          </>
         ) : (
           <ApiKeyInput apiKey={apiKey} setApiKey={setApiKey} handleApiKeySave={handleApiKeySave} />
         )
@@ -137,12 +140,12 @@ function App() {
             handleClick={handleClick}
             asking={asking}
           />
-          <ResponseDisplay question={question} response={response} error={error} />
+          <ResponseDisplay response={response} error={error} />
         </>
       )}
     </div>
   );
-  
+
 }
 
 
