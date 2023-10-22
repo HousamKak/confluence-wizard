@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { invoke } from '@forge/bridge';
+import './App.css';
 
 function App() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -39,15 +40,15 @@ function App() {
   };
 
   return (
-    <div>
-      <button onClick={loadData} disabled={isDataLoaded}>Load Data</button>
+    <div className="container">
+      <button onClick={loadData} disabled={isDataLoaded} className="button">Load Data</button>
       <p>Knowledge Base Loaded: {isDataLoaded ? 'Yes' : 'No'}</p>
-      <label>
+      <label className="label">
         Type your question:
-        <textarea value={question} onChange={(e) => setQuestion(e.target.value)} />
+        <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="textarea" />
       </label>
-      <button onClick={handleClick} type="submit">Ask</button>
-      {error && <p>{error}</p>}
+      <button onClick={handleClick} type="submit" className="button">Ask</button>
+      {error && <p className="error-text">{error}</p>}
       <p>Response: {response}</p>
     </div>
   );
