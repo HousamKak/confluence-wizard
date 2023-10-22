@@ -1,12 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState,useEffect } from 'react';
 import { invoke } from '@forge/bridge';
 import './App.css';
-import ApiKeyInput from './Components/Setup/ApiKeyInput.js';
-import SearchingKeyMessage from './Components/Setup/SearchingKeyMessage.js';
-import QuestionInput from './Components/QuestionArea/QuestionInput.js';
-import ResponseDisplay from './Components/QuestionArea/ResponseDisplay.js';
-import LoadingSpinner from './Components/Common/LoadingSpinner.js';
-import Configurations from './Components/Setup/Configurations.js';
 
 function App() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -19,8 +13,9 @@ function App() {
   const [asking, setAsking] = useState(false);
   const [isSetupComplete, setIsSetupComplete] = useState(false);
   const [checkingAPIKey, setCheckingAPIKey] = useState(true);
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [showChangeKeyInput, setShowChangeKeyInput] = useState(false);
+
+
+
 
   useEffect(() => {
     const checkApiKey = async () => {
@@ -36,11 +31,11 @@ function App() {
         setCheckingAPIKey(false); // Whether API key is found or not, set this to false
       }
     };
-
+  
     checkApiKey();
   }, []);
-
-
+  
+  
 
   const handleApiKeySave = async () => {
     try {
@@ -56,7 +51,7 @@ function App() {
       setError('There was an issue saving your API key. Please try again.');
     }
   };
-
+  
 
   const loadData = async () => {
     console.log('loadData function called.');
@@ -108,43 +103,45 @@ function App() {
     <div className="container">
       {!isSetupComplete ? (
         checkingAPIKey ? (
-          <SearchingKeyMessage />
+          <p>Searching for your OpenAI API Key...</p>
         ) : (
-          <ApiKeyInput apiKey={apiKey} setApiKey={setApiKey} handleApiKeySave={handleApiKeySave} />
+          <>
+            <p>No API key registered found, please add an OpenAI API key.</p>
+            <label className="label">
+              Enter your OpenAI API Key:
+              <input
+                type="password"  // hide the key as it's sensitive
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                className="input"
+              />
+            </label>
+            <button onClick={handleApiKeySave} className="button">Save API Key</button>
+          </>
         )
-      ) : isConfigOpen ? (
-        <>
-          <Configurations
-            hasApiKey={hasApiKey}
-            isDataLoaded={isDataLoaded}
-            loading={loading}
-            loadData={loadData}
-            handleApiKeySave={handleApiKeySave}
-            apiKey={apiKey}
-            setApiKey={setApiKey}
-            showChangeKeyInput={showChangeKeyInput}
-            setShowChangeKeyInput={setShowChangeKeyInput}
-          />
-          <button onClick={() => setIsConfigOpen(false)}>Go Back</button>
-        </>
       ) : (
         <>
-          <button onClick={() => setIsConfigOpen(true)}>Open Configurations</button>
+          <p>API Key saved successfully!</p>
+          <button onClick={loadData} disabled={isDataLoaded || loading} className="button">
+            {loading ? (<span className="loader"></span>) : ("Load Data")}
+          </button>
           <p>Knowledge Base Loaded: {isDataLoaded ? 'Yes' : 'No'}</p>
-          <QuestionInput
-            question={question}
-            setQuestion={setQuestion}
-            handleClick={handleClick}
-            asking={asking}
-          />
-          <ResponseDisplay question={question} response={response} error={error} />
+          <label className="label">
+            Type your question:
+            <textarea value={question} onChange={(e) => setQuestion(e.target.value)} className="textarea" />
+          </label>
+          <button onClick={handleClick} disabled={asking} className="button">
+            {asking ? (<span className="loader"></span>) : ("Ask")}
+          </button>
+          <p>Question: {question}</p>
+          {error && <p className="error-text">{error}</p>}
+          <p>Response: {response}</p>
         </>
       )}
     </div>
   );
   
 }
-
 
 export default App;
 
