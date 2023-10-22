@@ -1,6 +1,6 @@
 import Resolver from '@forge/resolver';
 import TFIDF from './tfidf.js';
-import api, { fetch as forgeFetch,route } from '@forge/api';
+import api, { fetch as forgeFetch, route } from '@forge/api';
 import { createLogger, format as _format, transports as _transports } from 'winston';
 
 const tfidfInstance = new TFIDF();
@@ -66,12 +66,12 @@ async function fetchAllConfluenceData(spaceKey) {
   return bodyContents;
 }
 
-resolver.define('get_and_index', async (req) => {
+resolver.define('get_and_index', async ({ payload }) => {
   try {
-    const fetchedData = await fetchAllConfluenceData(req.data.spaceKey);
+    const fetchedData = await fetchAllConfluenceData(payload.spaceKey);
     if (!fetchedData || fetchedData.length === 0) {
       logger.error('No data fetched from Confluence');
-      return { error: 'No data fetched from Confluence', status_code: 400 };
+      return { sucess: false, error: 'No data fetched from Confluence', status_code: 400 };
     }
 
     knowledgeBase = fetchedData;
@@ -82,21 +82,21 @@ resolver.define('get_and_index', async (req) => {
     tfidfInstance.computeIDF();  // Compute the IDF values
 
     logger.info('Data indexed successfully');
-    return { status: 'Data indexed successfully', status_code: 200 };
+    return { success: true, status: 'Data indexed successfully', status_code: 200 };
 
   } catch (error) {
     logger.error(`Failed to fetch and index Confluence data: ${error.message}`);
-    return { error: `Failed to fetch and index Confluence data: ${error.message}`, status_code: 500 };
+    return { success: false, error: `Failed to fetch and index Confluence data: ${error.message}`, status_code: 500 };
   }
 });
 
-resolver.define('question_to_gpt', async (req) => {
-  if (typeof req.data.question !== 'string' || req.data.question.length === 0) {
+resolver.define('question_to_gpt', async ({payload}) => {
+  if (typeof payload.question !== 'string' || payload.question.length === 0) {
     logger.error('Invalid question format');
-    return { error: 'Invalid question format', status_code: 400 };
+    return { answer: 'Invalid question format', status_code: 400 };
   }
 
-  const question = req.data.question;
+  const question = payload.question;
   const scores = [];
 
   tfidfInstance.tfidfs(question, function (i, measure) {
@@ -106,7 +106,7 @@ resolver.define('question_to_gpt', async (req) => {
   const topDocs = scores.sort((a, b) => b.score - a.score).slice(0, 5).map(doc => knowledgeBase[doc.index]).join(' ');
 
   try {
-    const url = "";
+    const url = "https://api.openai.com/v1/chat/completions";
     const params = {
       model: "gpt-3.5-turbo",
       messages: [

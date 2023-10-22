@@ -15,7 +15,7 @@ function App() {
         setError('There was an issue fetching the data. Please try again.');
       } else {
         setIsDataLoaded(true);
-        console.log("Data indexed successfully on backend");
+        console.log(data.status);
       }
     } catch (e) {
       console.error(`An error occurred while loading data: ${e.message}`);
