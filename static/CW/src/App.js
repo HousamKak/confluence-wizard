@@ -9,74 +9,144 @@ import LoadingSpinner from './Components/Common/LoadingSpinner.js';
 import Configurations from './Components/Setup/Configurations.js';
 
 function App() {
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [question, setQuestion] = useState('');
-  const [response, setResponse] = useState('');
-  const [error, setError] = useState('');
+
+  // Controls main view
+  const [isSetupComplete, setIsSetupComplete] = useState(false);
+
+  // Controls Api Keys dynamics
   const [apiKey, setApiKey] = useState('');
   const [hasApiKey, setHasApiKey] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [asking, setAsking] = useState(false);
-  const [isSetupComplete, setIsSetupComplete] = useState(false);
   const [checkingAPIKey, setCheckingAPIKey] = useState(true);
+
+  // Controls knowledge data dynamics
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [checkingData, setCheckingData] = useState(false);
+
+  // loader animation
+  const [loading, setLoading] = useState(false);
+
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [showChangeKeyInput, setShowChangeKeyInput] = useState(false);
 
-  useEffect(() => {
-    const checkApiKey = async () => {
-      try {
-        const response = await invoke('check_openai_key');
-        if (response && response.hasKey) {
-          setHasApiKey(true);
-          setIsSetupComplete(true); // If the key is present, mark the setup as complete
-        }
-      } catch (error) {
-        console.error('Error checking API key:', error);
-      } finally {
-        setCheckingAPIKey(false); // Whether API key is found or not, set this to false
-      }
-    };
 
-    checkApiKey();
+  // Those set the question and the response
+  const [asking, setAsking] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [response, setResponse] = useState('');
+
+  // setting error message
+  const [error, setError] = useState('');
+
+  const isDataPreloaded = async () => {
+    try {
+      const response = await invoke('check_data_preloaded');
+      if (response && response.Preloaded) {
+        setIsSetupComplete(true);
+      }
+      return response && response.Preloaded;
+    } catch (error) {
+      console.error('Error checking if data is preloaded:', error);
+      throw error; // Rethrow the error for retryOperation to catch
+    }
+  };
+
+  const checkApiKey = async () => {
+    const response = await invoke('check_openai_key');
+    console.log(response)
+    if (response && response.hasKey) {
+      setHasApiKey(true);
+      setCheckingAPIKey(false);
+      setCheckingData(true)
+    } else {
+      setError('API key check failed')
+      setCheckingAPIKey(false);
+      throw new Error('API key check failed');
+    }
+  };
+
+  const loadData = async () => {
+    console.log('Attempting to fetch data...');
+    const data = await invoke('get_and_index', { spaceKey: 'CO' });
+    console.log('Data fetched:', data);
+    if (!data.success) {
+      throw new Error('Data fetching failed');
+    } else {
+      setIsDataLoaded(true);
+      setIsSetupComplete(true);
+    }
+  };
+
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const retryOperation = async (operation, maxAttempts = 3, delay = 1000) => {  // added a delay parameter with default value of 1000ms
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        await operation();
+        return;
+      } catch (error) {
+        console.error(`Attempt ${attempt + 1} failed. Retrying...`);
+        if (attempt < maxAttempts - 1) {  // if it's not the last attempt, sleep
+          await sleep(delay);
+        } else {
+          throw error;
+        }
+      }
+    }
+  };
+  
+
+  const onLoadApp = async () => {
+    try {
+      // Check for API key with retries
+      await retryOperation(checkApiKey);
+
+    } catch (error) {
+      console.error('Error during app load:', error);
+      setError('There was an issue initializing the app. Please refresh and try again.');
+      setIsSetupComplete(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+    onLoadApp();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      if (hasApiKey) {
+        try {
+          const dataPreloaded = await isDataPreloaded();
+          if (!dataPreloaded) {
+            await retryOperation(loadData);
+          }
+        }
+        catch (e){
+          setError(e)
+         }
 
+      }
+    })()
+  }, [hasApiKey]);
+
+  // Check if data is preloaded. If not, load it with retries
 
   const handleApiKeySave = async () => {
     try {
       const response = await invoke('store_openai_key', { openaiKey: apiKey });
       if (response && response.success) {
-        setHasApiKey(true);
         setApiKey(''); // clear the input
+        setCheckingAPIKey(false);
+        setCheckingData(true); 
+        setHasApiKey(true);       
       } else {
         setError(response.error || 'There was an issue saving your API key. Please try again.');
       }
     } catch (error) {
       console.error('Error storing API key:', error);
       setError('There was an issue saving your API key. Please try again.');
-    }
-  };
-
-
-  const loadData = async () => {
-    console.log('loadData function called.');
-    try {
-      setLoading(true); // Start the loading process
-      setError('');
-      console.log('Attempting to fetch data...');
-      const data = await invoke('get_and_index', { spaceKey: 'CO' });
-      console.log('Data fetched:', data);
-      if (!data.success) {
-        setError('There was an issue fetching the data. Please try again.');
-      } else {
-        setIsDataLoaded(true);
-        console.log(data.status);
-      }
-    } catch (e) {
-      console.error(`An error occurred while loading data: ${e.message}`);
-      setError('There was an issue cc fetching the data. Please try again.');
-    } finally {
-      setLoading(false); // End the loading process irrespective of success or error
     }
   };
 
@@ -110,6 +180,11 @@ function App() {
         checkingAPIKey ? (
           <>
             <SearchingKeyMessage />
+            <LoadingSpinner />
+          </>
+        ) : checkingData ? (
+          <>
+            <p>Loading Confluence Content...</p>
             <LoadingSpinner />
           </>
         ) : (
