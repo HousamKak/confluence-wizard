@@ -1,105 +1,147 @@
-class TFIDF {
-    constructor() {
-        this.documents = [];
-        this.termFrequency = {};
-        this.inverseDocumentFrequency = {};
+import _ from 'underscore';
+
+class SimpleTokenizer {
+    constructor(language) {
+        this.language = language;
     }
 
-    addDocument(doc) {
-        const preprocessedDoc = this.preprocess(doc);
-        this.documents.push(preprocessedDoc);
-
-        const termCounts = {};
-        preprocessedDoc.forEach(term => {
-            termCounts[term] = (termCounts[term] || 0) + 1;
-        });
-
-        for (const term in termCounts) {
-            this.termFrequency[term] = this.termFrequency[term] || [];
-            this.termFrequency[term].push(termCounts[term]);
+    tokenize(text, lowercase = true) {
+        if (lowercase) {
+            text = text.toLowerCase();
         }
-    }
-
-    preprocess(doc) {
-        // Convert to lowercase
-        doc = doc.toLowerCase();
-
-        // Simple whitespace-based tokenization
-        let terms = doc.split(/\s+/);
-
-        // Remove stopwords (this is a basic list, consider expanding)
-        const stopwords = ["and", "the", "is", "of", "to", "in", "that", "it", "with", "as"];
-        terms = terms.filter(term => !stopwords.includes(term));
-
-        // TODO: Add stemming and lemmatization if necessary
-
-        return terms;
-    }
-
-    computeIDF() {
-        const totalDocs = this.documents.length;
-        for (const term in this.termFrequency) {
-            const termPresenceInDocs = this.termFrequency[term].length;
-            // Smoothing added to the formula
-            this.inverseDocumentFrequency[term] = Math.log(totalDocs / (1 + termPresenceInDocs));
-        }
-    }
-
-    tfidf(doc) {
-        const preprocessedDoc = this.preprocess(doc);
-        const termCounts = {};
-
-        preprocessedDoc.forEach(term => {
-            termCounts[term] = (termCounts[term] || 0) + 1;
-        });
-
-        const tfidfVector = {};
-        for (const term in termCounts) {
-            // Sublinear scaling for term frequency
-            const tf = 1 + Math.log(termCounts[term]);
-            const idf = this.inverseDocumentFrequency[term] || 0;
-            tfidfVector[term] = tf * idf;
-        }
-
-        // Document Length Normalization
-        const magnitude = Math.sqrt(Object.values(tfidfVector).reduce((sum, val) => sum + val * val, 0));
-        for (const term in tfidfVector) {
-            tfidfVector[term] = tfidfVector[term] / magnitude;
-        }
-
-        return tfidfVector;
-    }
-    tfidfs(doc, callback) {
-        const docVector = this.tfidf(doc);
-        this.documents.forEach((_, index) => {
-            const comparisonVector = this.tfidf(this.documents[index].join(' '));
-            const cosineSimilarity = this.computeCosineSimilarity(docVector, comparisonVector);
-            
-            console.log("Cosine Similarity for Document", index, ":", cosineSimilarity);  // Log added here
-
-            callback(index, cosineSimilarity);
-        });
-    }
-
-    computeCosineSimilarity(vecA, vecB) {
-        const terms = new Set([...Object.keys(vecA), ...Object.keys(vecB)]);
-        let dotProduct = 0, magnitudeA = 0, magnitudeB = 0;
-
-        terms.forEach(term => {
-            const valA = vecA[term] || 0;
-            const valB = vecB[term] || 0;
-            dotProduct += valA * valB;
-            magnitudeA += valA * valA;
-            magnitudeB += valB * valB;
-        });
-
-        if (magnitudeA === 0 || magnitudeB === 0) {
-            return 0;
-        }
-
-        return dotProduct / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
+        return text.split(/\W+/).filter(Boolean);
     }
 }
 
+// Instantiate the tokenizer
+const tokenizer = new SimpleTokenizer('en');
 
-export default TFIDF;
+import stopwords_en from './stopwords-en';
+const stopwords = stopwords_en;
+
+function buildDocument(text, key) {
+    var stopOut;
+
+    if (typeof text === 'string') {
+        text = tokenizer.tokenize(text);
+        stopOut = true;
+    } else if (!_.isArray(text)) {
+        stopOut = false;
+        return text;
+    }
+
+    return text.reduce(function(document, term) {
+        if (typeof document[term] === 'function') document[term] = 0;
+        if (!stopOut || stopwords.indexOf(term) < 0)
+            document[term] = (document[term] ? document[term] + 1 : 1);
+        return document;
+    }, {
+        __key: key
+    });
+}
+
+function tf(term, document) {
+    return document[term] ? document[term] : 0;
+}
+
+function documentHasTerm(term, document) {
+    return document[term] && document[term] > 0;
+}
+
+function TfIdf() {
+    this.documents = [];
+    this._idfCache = {};
+}
+
+export default TfIdf;
+TfIdf.tf = tf;
+
+TfIdf.prototype.idf = function(term, force) {
+    if (this._idfCache[term] && this._idfCache.hasOwnProperty(term) && !force)
+        return this._idfCache[term];
+
+    var docsWithTerm = this.documents.reduce(function(count, document) {
+        return count + (documentHasTerm(term, document) ? 1 : 0);
+    }, 0);
+
+    var idf = 1 + Math.log((this.documents.length) / (1 + docsWithTerm));
+
+    this._idfCache[term] = idf;
+    return idf;
+};
+
+TfIdf.prototype.addDocument = function(document, key, restoreCache) {
+    this.documents.push(buildDocument(document, key));
+
+    // Update or clear the cache based on the restoreCache parameter
+    if (restoreCache === true) {
+        for (var term in this._idfCache) {
+            this.idf(term, true);
+        }
+    } else {
+        this._idfCache = {};
+    }
+};
+
+
+TfIdf.prototype.tfidf = function(terms, d) {
+    var _this = this;
+
+    if (!_.isArray(terms))
+        terms = terms.split(/\s+/).map(token => token.toLowerCase());
+
+    return terms.reduce(function(value, term) {
+        var idf = _this.idf(term);
+        idf = idf === Infinity ? 0 : idf;
+        return value + (tf(term, _this.documents[d]) * idf);
+    }, 0.0);
+};
+
+TfIdf.prototype.listTerms = function(d) {
+    var terms = [];
+
+    for (var term in this.documents[d]) {
+        if (term != '__key')
+            terms.push({
+                term: term,
+                tfidf: this.tfidf(term, d)
+            });
+    }
+
+    return terms.sort(function(x, y) {
+        return y.tfidf - x.tfidf;
+    });
+};
+
+TfIdf.prototype.tfidfs = function(terms, callback) {
+    var tfidfs = new Array(this.documents.length);
+
+    for (var i = 0; i < this.documents.length; i++) {
+        tfidfs[i] = this.tfidf(terms, i);
+        if (callback)
+            callback(i, tfidfs[i], this.documents[i].__key);
+    }
+
+    return tfidfs;
+};
+
+TfIdf.prototype.setTokenizer = function(t) {
+    if (!_.isFunction(t.tokenize))
+        throw new Error('Expected a valid Tokenizer');
+    tokenizer = t;
+};
+
+TfIdf.prototype.serialize = function() {
+    return JSON.stringify({
+        documents: this.documents,
+        _idfCache: this._idfCache
+    });
+};
+
+TfIdf.deserialize = function(serializedData) {
+    const data = JSON.parse(serializedData);
+    const instance = new TfIdf();
+    instance.documents = data.documents || [];
+    instance._idfCache = data._idfCache || {};
+    return instance;
+};
