@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@forge/bridge';
 import './App.css';
+import api, { route } from '@forge/api';
 import ApiKeyInput from './Components/Setup/ApiKeyInput.js';
 import SearchingKeyMessage from './Components/Setup/SearchingKeyMessage.js';
 import QuestionInput from './Components/QuestionArea/QuestionInput.js';
@@ -34,8 +35,16 @@ function App() {
   const [question, setQuestion] = useState('');
   const [response, setResponse] = useState('');
 
+  // Control Space Keys
+  const [selectedSpaceKey, setSelectedSpaceKey] = useState('');
+  const [spaceKeyIsSelected, setSpaceKeyIsSelected] = useState(false);
+  const [key, setKey] = useState('');
+
+
   // setting error message
   const [error, setError] = useState('');
+
+
 
   const isDataPreloaded = async () => {
     try {
@@ -63,10 +72,29 @@ function App() {
       throw new Error('API key check failed');
     }
   };
+  const handleApiKeyDelete = async () => {
+    try {
+      const response = await invoke('delete_openai_key');
+      if (response && response.success) {
+        setCheckingAPIKey(false);
+        setCheckingData(false)
+        setHasApiKey(false);
+        setShowChangeKeyInput(false);
+        setIsSetupComplete(false)
+        // setApiKey('');
+        console.log('API key deleted successfully.');
+      } else {
+        setError(response.error || 'There was an issue deleting your API key. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting API key:', error);
+      setError('There was an issue deleting your API key. Please try again.');
+    }
+  };
 
   const loadData = async () => {
     console.log('Attempting to fetch data...');
-    const data = await invoke('get_and_index', { spaceKey: 'CO' });
+    const data = await invoke('get_and_index', { spaceKey: selectedSpaceKey });
     console.log('Data fetched:', data);
     if (!data.success) {
       throw new Error('Data fetching failed');
@@ -75,6 +103,7 @@ function App() {
       setIsSetupComplete(true);
     }
   };
+
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -93,9 +122,10 @@ function App() {
       }
     }
   };
-  
+
 
   const onLoadApp = async () => {
+
     try {
       // Check for API key with retries
       await retryOperation(checkApiKey);
@@ -107,12 +137,15 @@ function App() {
     } finally {
       setLoading(false);
     }
+
   };
 
 
   useEffect(() => {
-    onLoadApp();
-  }, []);
+    if (spaceKeyIsSelected) {
+      onLoadApp();
+    }
+  }, [spaceKeyIsSelected]);
 
   useEffect(() => {
     (async () => {
@@ -123,9 +156,9 @@ function App() {
             await retryOperation(loadData);
           }
         }
-        catch (e){
+        catch (e) {
           setError(e)
-         }
+        }
 
       }
     })()
@@ -139,8 +172,9 @@ function App() {
       if (response && response.success) {
         setApiKey(''); // clear the input
         setCheckingAPIKey(false);
-        setCheckingData(true); 
-        setHasApiKey(true);       
+        setCheckingData(true);
+        setHasApiKey(true);
+        setShowChangeKeyInput(false);
       } else {
         setError(response.error || 'There was an issue saving your API key. Please try again.');
       }
@@ -173,52 +207,63 @@ function App() {
     console.log('handleClick function called.');
     await questionAI(question);
   };
-
   return (
     <div className="container">
-      {!isSetupComplete ? (
-        checkingAPIKey ? (
+      {selectedSpaceKey ? (
+        !isSetupComplete ? (
+          checkingAPIKey ? (
+            <>
+              <SearchingKeyMessage />
+              <LoadingSpinner />
+            </>
+          ) : checkingData ? (
+            <>
+              <p>Loading Confluence Content...</p>
+              <LoadingSpinner />
+            </>
+          ) : (
+            <ApiKeyInput apiKey={apiKey} setApiKey={setApiKey} handleApiKeySave={handleApiKeySave} />
+          )
+        ) : isConfigOpen ? (
           <>
-            <SearchingKeyMessage />
-            <LoadingSpinner />
-          </>
-        ) : checkingData ? (
-          <>
-            <p>Loading Confluence Content...</p>
-            <LoadingSpinner />
+            <Configurations
+              hasApiKey={hasApiKey}
+              handleApiKeySave={handleApiKeySave}
+              handleApiKeyDelete={handleApiKeyDelete}
+              apiKey={apiKey}
+              setApiKey={setApiKey}
+              showChangeKeyInput={showChangeKeyInput}
+              setShowChangeKeyInput={setShowChangeKeyInput}
+            />
+            <button onClick={() => setIsConfigOpen(false)}>Go Back</button>
           </>
         ) : (
-          <ApiKeyInput apiKey={apiKey} setApiKey={setApiKey} handleApiKeySave={handleApiKeySave} />
+          <>
+            <button onClick={() => setIsConfigOpen(true)}>Open Configurations</button>
+            <p className='declarative'>Ask Questions about Your knowledge base</p>
+            <QuestionInput
+              question={question}
+              setQuestion={setQuestion}
+              handleClick={handleClick}
+              asking={asking}
+            />
+            <ResponseDisplay response={response} error={error} />
+          </>
         )
-      ) : isConfigOpen ? (
-        <>
-          <Configurations
-            hasApiKey={hasApiKey}
-            isDataLoaded={isDataLoaded}
-            loading={loading}
-            loadData={loadData}
-            handleApiKeySave={handleApiKeySave}
-            apiKey={apiKey}
-            setApiKey={setApiKey}
-            showChangeKeyInput={showChangeKeyInput}
-            setShowChangeKeyInput={setShowChangeKeyInput}
-          />
-          <button onClick={() => setIsConfigOpen(false)}>Go Back</button>
-        </>
       ) : (
         <>
-          <button onClick={() => setIsConfigOpen(true)}>Open Configurations</button>
-          <p>Knowledge Base Loaded: {isDataLoaded ? 'Yes' : 'No'}</p>
-          <QuestionInput
-            question={question}
-            setQuestion={setQuestion}
-            handleClick={handleClick}
-            asking={asking}
+          <p>Input a Confluence space key to proceed:</p>
+          <input
+            type="text"
+            value={key}
+            onChange={e => setKey(e.target.value)}
+            placeholder="Enter your space key"
           />
-          <ResponseDisplay response={response} error={error} />
+          <button onClick={() => { setSpaceKeyIsSelected(true); setSelectedSpaceKey(key) }}>Submit</button>
         </>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 
 }

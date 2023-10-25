@@ -43,7 +43,7 @@
   border-radius: 8px; /* Adjusted border-radius */
   border: 1px solid #ccc;
   box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.05); /* Added subtle shadow */
-  margin-top: 20px; /* Added margin to push the textarea down */
+  margin-top: 5px; /* Added margin to push the textarea down */
 }
 
 
@@ -75,4 +75,13 @@
   100% {
     transform: rotate(360deg);
   }
+}
+
+.delete-button{
+  background-color: #B22222; /* Change to desired color */
+  color: white;
+}
+
+.declarative{
+  
 }

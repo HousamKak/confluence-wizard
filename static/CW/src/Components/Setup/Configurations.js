@@ -3,10 +3,8 @@ import LoadingSpinner from '../Common/LoadingSpinner.js';
 
 const Configurations = ({
     hasApiKey,
-    isDataLoaded,
-    loading,
-    loadData,
     handleApiKeySave,
+    handleApiKeyDelete,
     apiKey,
     setApiKey,
     showChangeKeyInput,
@@ -15,10 +13,8 @@ const Configurations = ({
     return (
         <div className="configurations-container">
             <h2>Configurations</h2>
-            
-            <div className="api-key-section">
-                <p>API Key Status: {hasApiKey ? 'Configured' : 'Not Configured'}</p>
 
+            <div className="api-key-section">
                 {showChangeKeyInput ? (
                     <>
                         <label className="label">
@@ -35,18 +31,19 @@ const Configurations = ({
                         </button>
                     </>
                 ) : (
-                    <button onClick={() => setShowChangeKeyInput(true)} className="button">
-                        Change API Key
-                    </button>
+                    <>
+                        <button onClick={() => setShowChangeKeyInput(true)} className="button">
+                            Change API Key
+                        </button>
+                        {hasApiKey && (
+                            <button onClick={handleApiKeyDelete} className="button delete-button">
+                                Delete API Key
+                            </button>
+                        )}
+                    </>
                 )}
             </div>
-            
-            <div className="load-data-section">
-                <p>Knowledge Base Loaded: {isDataLoaded ? 'Yes' : 'No'}</p>
-                <button onClick={loadData} disabled={isDataLoaded || loading} className="button">
-                    {loading ? <LoadingSpinner /> : "Load Data"}
-                </button>
-            </div>
+
         </div>
     );
 };
